@@ -11,23 +11,32 @@ app.use(express.json());
 // HTTP Requests
 app.post("/login", (req, res) => {
     // Auth User, create special token for user
-    const email = req.body.userEmail;
+    const email = req.body.email;
+    const password = req.body.pwd;
     const user = { email: email };
 
     const accessToken = generateAccessToken(user);
     const refreshToken = jwt.sign(user, process.env.REFRESH_TOKEN_SECRET);
 
-    User.update(
-        { token: refreshToken },
-        { where: { email: email }}
-    ).then(() => {
-        console.log("User " + email + ": token updated");
-    })
-    .catch((err) => {
+    User.findOne(
+        { where: { email: email } }
+    ).then((resUser) => { 
+        if(resUser != null && resUser.pwd == password) {
+            User.update(
+                { token: refreshToken },
+                { where: { email: email }}
+            ).then(() => {
+                console.log("User " + email + ": token updated");
+            });
+
+            res.json({ accessToken: accessToken, refreshToken: refreshToken });
+        }
+        else {
+            return res.sendStatus(403);
+        }
+    }).catch((err) => {
         console.log(err);
     });
-
-    res.json({ accessToken: accessToken, refreshToken: refreshToken });
 });
 
 app.post("/token", (req, res) => {
